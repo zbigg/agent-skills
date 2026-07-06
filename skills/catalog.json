@@ -78,6 +78,13 @@
       "path": "skills/carto-preview-builder-map"
     },
     {
+      "name": "carto-location-services",
+      "layer": "platform",
+      "dependencies": ["carto-basics"],
+      "description": "Call CARTO Location Data Services — geocoding, reverse geocoding, isolines, routing, OD matrices — synchronously and inline via the CARTO MCP server's lds_* tools, for a handful of inputs needed now in the conversation. Provider is account-configured, never chosen by the agent. Distinct from carto-geocoding and carto-routing-od-analysis, which build CARTO Workflows for whole tables.",
+      "path": "skills/carto-location-services"
+    },
+    {
       "name": "carto-develop-app",
       "layer": "platform",
       "dependencies": ["carto-basics", "carto-connect-datawarehouse", "carto-explore-datawarehouse"],

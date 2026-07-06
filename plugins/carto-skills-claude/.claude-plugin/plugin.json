@@ -13,6 +13,7 @@
     "../../../skills/carto-create-builder-maps",
     "../../../skills/carto-render-inline-map",
     "../../../skills/carto-preview-builder-map",
+    "../../../skills/carto-location-services",
     "../../../skills/carto-develop-app",
     "../../../skills/carto-hotspot-analysis",
     "../../../skills/carto-spatial-autocorrelation",
