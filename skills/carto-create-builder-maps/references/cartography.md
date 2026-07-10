@@ -555,18 +555,20 @@ Auto-generated per layer unless suppressed. Type inferred from `colorScale`:
 
 ### 6.3 Labels (textLabel)
 
-All tile layer types support `config.textLabel` — an array of label configs (field, color, outlineColor, size, anchor, alignment, offset).
+`config.textLabel` (an array of label configs) applies to **vector tileset layers only** — point, line, and polygon. It is *not* available on aggregation/cell layers (h3, quadbin, heatmap) or raster; `clusterTile` has its own separate count label, not `textLabel`. On the layers that support it, set `textLabel[0].field` to the column to draw and the renderer anchors the label to the feature automatically — the point itself for points, the **midpoint** for lines, the **centroid** for polygons. No centroid/point column is required; deck.gl synthesises the anchor from the feature geometry.
 
 Labels render at every zoom the layer is visible. There is no per-label zoom gate — **control label density upstream** by choosing a sparse field (major cities, HQ locations), not a dense one (every store).
 
-**Use for:** named features the viewer won't recognise from position; polygons where the name is meaningful (counties, neighbourhoods) and density is OK; small hand-curated reference layers.
+**Use for:** named features the viewer won't recognise from position; polygons where the name is meaningful (counties, neighbourhoods) and density is OK; lines where the name matters (major roads, rivers, transit lines, boundaries); small hand-curated reference layers.
 
-**Don't use for:** dense point datasets, cell layers (no natural anchor), rasters.
+**Don't use for:** dense point datasets, cell/aggregation layers (h3, quadbin, heatmap — no natural anchor, no label support), rasters.
+
+**One label per line feature (`textLabelUniqueIdField`) — lines only.** A line usually spans several tiles, and by default each tile draws its own copy of the label, so a long road shows its name repeated. Set `visConfig.textLabelUniqueIdField` to a column that uniquely identifies each line feature (e.g. `name`, `road_id`) and the renderer collapses it to a single label per feature. Builder exposes this control **only for line-geometry layers** — it's the knob that makes road/river/boundary labelling look right. Points and polygons don't take it.
 
 **Legibility defaults:**
 - `outlineColor`: inverse of basemap background (white on dark, near-black on light).
 - `size`: 12–14 max; 16+ shouts.
-- `offset`: `[0, -8]` for points (above), `[0, 0]` for polygons (centroid).
+- `anchor` / `alignment`: these (plus `size`) are what actually position the label relative to its anchor point. **`offset` is ignored for tile-layer labels** — don't rely on it for placement.
 
 ### 6.4 Description (right-rail markdown)
 
