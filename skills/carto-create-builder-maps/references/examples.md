@@ -420,7 +420,7 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
             "config": {
               "dataId": "$ref:districts", "label": "Districts",
               "color": [180, 180, 180], "isVisible": true, "hidden": false, "columns": {},
-              "textLabel": [{"size":12,"color":[44,48,50],"field":null,"anchor":"start","offset":[0,0],"alignment":"center","outlineColor":[255,255,255]}],
+              "textLabel": [{"size":12,"color":[44,48,50],"field":{"name":"name","type":"string"},"anchor":"middle","offset":[0,0],"alignment":"center","outlineColor":[255,255,255]}],
               "visConfig": {"filled": false, "stroked": true, "opacity": 0.7, "thickness": 1}
             },
             "visualChannels": {"colorField":null,"colorScale":"quantize","sizeField":null,"sizeScale":"linear","radiusField":null,"radiusScale":"linear"}
@@ -430,8 +430,8 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
             "config": {
               "dataId": "$ref:roads", "label": "Major roads",
               "color": [90, 90, 90], "isVisible": true, "hidden": false, "columns": {},
-              "textLabel": [{"size":12,"color":[44,48,50],"field":null,"anchor":"start","offset":[0,0],"alignment":"center","outlineColor":[255,255,255]}],
-              "visConfig": {"filled": false, "stroked": true, "opacity": 0.6, "thickness": 2}
+              "textLabel": [{"size":12,"color":[44,48,50],"field":{"name":"name","type":"string"},"anchor":"middle","offset":[0,0],"alignment":"center","outlineColor":[255,255,255]}],
+              "visConfig": {"filled": false, "stroked": true, "opacity": 0.6, "thickness": 2, "textLabelUniqueIdField": "name"}
             },
             "visualChannels": {"colorField":null,"colorScale":"quantize","sizeField":null,"sizeScale":"linear","radiusField":null,"radiusScale":"linear"}
           }
@@ -460,3 +460,4 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
 - Each `layerId` matches a `visState.layers[].id` (the layer `id`, not the `$ref` dataId). A dangling id would be flagged by the validator and pruned by Builder.
 - `isCollapsed: true` ships the group folded in the panel; `isVisible: true` keeps both reference layers rendering (group visibility ANDs with each layer's own `isVisible`).
 - The "Stores" layer is omitted from any group on purpose — listing it as a top-level `{type:"layer"}` entry just fixes its panel order. Dropping it from the array entirely would still work: Builder appends ungrouped layers on load.
+- **Labels work on vector tileset layers of any geometry.** The polygon "Districts" and line "Major roads" layers both carry an active `textLabel` (`field` set to `name`); the renderer auto-places them at the polygon centroid and line midpoint — no centroid column needed. The **line** layer also sets `visConfig.textLabelUniqueIdField: "name"` so a road spanning multiple tiles gets **one** label instead of one per tile — this control is line-only. Leave `field: null` to keep a layer's labels off. Labels aren't available on h3/quadbin/heatmap or raster layers. See `references/cartography.md` §6.3.
