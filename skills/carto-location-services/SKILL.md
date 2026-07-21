@@ -39,14 +39,20 @@ Unlike the map tools, these return JSON text (not a rendered widget), so there's
 
 ## Putting a result on a map (optional)
 
-`lds_isolines` / `lds_routing` return GeoJSON geometry. The map tool (`carto-render-inline-map`'s `view_map`) renders **tile-only CARTO sources**, not inline GeoJSON — so for a **small** geometry, wrap it in a `vectorQuerySource` whose SQL builds the geometry with the connection's dialect (e.g. `ST_GeomFromGeoJSON` on Postgres/Redshift/Databricks, `ST_GEOGFROM` on BigQuery, `TO_GEOGRAPHY` on Snowflake), against one of the user's connections. Sketch:
+`lds_isolines` / `lds_routing` return GeoJSON geometry. The map tool (`carto-render-inline-map`'s `view_map`) renders **tile-only CARTO sources**, not inline GeoJSON — so for a **small** geometry, wrap it in a `vectorQuerySource` whose SQL builds the geometry from the GeoJSON, against one of the user's connections.
+
+- **Extract the bare geometry first.** Routing returns it directly — `data.value.route` is a bare geometry object. Isolines return a `FeatureCollection` with **one feature per requested range**: take `features[i].geometry` for the range(s) you're rendering. Never pass a `Feature`/`FeatureCollection` to the SQL constructor — BigQuery and PostGIS reject them outright.
+- **The geometry `type` is not fixed.** Routes may be `LineString` or `MultiLineString`; isolines `Polygon` or `MultiPolygon` — it changes with waypoints/fragmentation and with the account's provider. Every warehouse's GeoJSON constructor accepts all of these, so pass the geometry straight through; never assume the singular form or read `coordinates` as a single line/ring.
+- **Use the connection's dialect constructor** (pick by the connection's provider from `list_connections`): BigQuery `ST_GEOGFROMGEOJSON`, Snowflake `TO_GEOGRAPHY` (via `PARSE_JSON`), Databricks `st_geogfromgeojson` (needs DBR 17.1+ / SQL Pro or Serverless — not SQL Classic), Redshift `ST_GeomFromGeoJSON` (returns planar GEOMETRY), Oracle `SDO_UTIL.FROM_GEOJSON`, PostGIS `ST_GeomFromGeoJSON`. The same function handles routing and isoline geometry alike. Full per-dialect caveats and verification queries: [`references/rendering-geometry.md`](references/rendering-geometry.md).
+
+Sketch:
 
 ```
 view_map({ deckglProps: { layers: [{
   "@@type": "VectorTileLayer",
   "data": { "@@function": "vectorQuerySource",
             "connectionName": "<a CARTO connection>",
-            "sqlQuery": "SELECT <dialect ST_GeomFromGeoJSON>('<geojson>') AS geom" } }] } })
+            "sqlQuery": "SELECT <dialect GeoJSON constructor>('<bare geometry JSON>') AS geom" } }] } })
 ```
 
 This needs a CARTO connection and only works for geometry small enough to embed. Confirm with the user before rendering. For large geometry, go through the Workflows path (write results to a table, then map the table).
@@ -64,3 +70,4 @@ This needs a CARTO connection and only works for geometry small enough to embed.
 - **Using these tools for a whole warehouse table.** That's the Workflows path (`carto-geocoding` / `carto-routing-od-analysis`).
 - **Acting on a truncated result, or trying to map a huge isoline/route inline.** If it's truncated or large, move to Workflows.
 - **Retrying `lds_od_matrix` on a non-TravelTime account.** Check `lds_capabilities`; if unsupported, use the Workflows OD-matrix path.
+- **Passing a `Feature`/`FeatureCollection` (or the whole isolines response) into a SQL geometry constructor.** Extract the bare geometry first: `data.value.route` for routes, `features[i].geometry` for isolines.
