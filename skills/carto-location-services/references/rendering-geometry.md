@@ -2,10 +2,11 @@
 
 > **This is a reference, not a standalone skill.** Read alongside the `carto-location-services` `SKILL.md` when embedding an LDS route/isoline geometry into a `vectorQuerySource`. The main skill carries the flow; this file carries the per-dialect constructor table, caveats, and verification queries.
 
-## Extract the bare geometry first
+## Extract the coordinates/geometry first
 
-Every constructor below wants a **bare GeoJSON geometry object** (`LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, …). BigQuery and PostGIS additionally **reject** `Feature`/`FeatureCollection` outright. The two LDS operations hand you the geometry at different depths:
+Every GeoJSON constructor below wants a **bare GeoJSON geometry object** (`Point`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, …). BigQuery and PostGIS additionally **reject** `Feature`/`FeatureCollection` outright. The LDS operations hand you the location data in different shapes:
 
+- **Geocode** — **no GeoJSON at all**: plain numeric fields, keyed by address index (verified against the live tool, Jul 2026). `data["0"].value` is the candidate list for the first address, `data["1"].value` for the second, and so on; each candidate carries `latitude`, `longitude`, address components, and `matchConfidence`. Take `value[0].longitude` / `value[0].latitude` for the top match and feed them to a point constructor (below) — remember the constructors take **lon first**.
 - **Routing** — `data.value.route` **is already a bare geometry**. Pass it straight through.
 - **Isolines** — the response is a `FeatureCollection` with **one feature per requested range**. Extract `features[i].geometry` for the range(s) you're rendering — never pass the collection or a feature.
 
@@ -36,37 +37,58 @@ Verified against official docs, Jul 2026. All six accept a bare GeoJSON geometry
 | Oracle | `SDO_UTIL.FROM_GEOJSON(json [, crs, srid])` | SDO_GEOMETRY | Overloads accept `VARCHAR2` or `CLOB`; default SRID 4326. Converts a geometry object, not a full GeoJSON doc. Idiosyncratic vs. the others — test the exact call. |
 | PostGIS | `ST_GeomFromGeoJSON(json)` | geometry | Geometry fragments only (errors on full doc). SRID defaults to 4326 since PostGIS 3.0. |
 
+All six GeoJSON constructors also accept a `Point` geometry (`{"type":"Point","coordinates":[lon,lat]}`), so one pattern covers every LDS shape. For geocoded points, though, the native point constructor is simpler — the geocode response gives you two numbers, not a GeoJSON object:
+
+| Warehouse | Native point constructor (lon first) |
+|---|---|
+| BigQuery | `ST_GEOGPOINT(lon, lat)` |
+| Snowflake | `ST_MAKEPOINT(lon, lat)` |
+| Databricks | `st_point(lon, lat)` |
+| Redshift | `ST_Point(lon, lat)` |
+| Oracle | `SDO_GEOMETRY(2001, 4326, SDO_POINT_TYPE(lon, lat, NULL), NULL, NULL)` |
+| PostGIS | `ST_SetSRID(ST_MakePoint(lon, lat), 4326)` |
+
+The SRID-4326 default and bare-geometry-only caveats above apply to points identically.
+
 ## Verification queries
 
-One Multi\* round-trip per dialect — the singular forms are trivially covered if these pass. The two most worth actually running are **Databricks** (version gate) and **Oracle** (idiosyncratic call/return handling and polygon ring-orientation expectations).
+One Multi\* round-trip plus one native-point round-trip per dialect — the singular line/polygon forms are trivially covered if the Multi\* checks pass. The two most worth actually running are **Databricks** (version gate) and **Oracle** (idiosyncratic call/return handling and polygon ring-orientation expectations).
 
 ```sql
 -- BigQuery
 SELECT ST_GEOGFROMGEOJSON('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}');
 SELECT ST_GEOGFROMGEOJSON('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}');
+SELECT ST_GEOGPOINT(0, 0);
 
 -- Snowflake
 SELECT TO_GEOGRAPHY(PARSE_JSON('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}'));
 SELECT TO_GEOGRAPHY(PARSE_JSON('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}'));
+SELECT ST_MAKEPOINT(0, 0);
 
 -- Databricks (DBR 17.1+ / SQL Pro or Serverless)
 SELECT st_asewkt(st_geogfromgeojson('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}'));
 SELECT st_asewkt(st_geogfromgeojson('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}'));
+SELECT st_asewkt(st_point(0, 0));
 
 -- Redshift
 SELECT ST_AsText(ST_GeomFromGeoJSON('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}'));
 SELECT ST_AsText(ST_GeomFromGeoJSON('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}'));
+SELECT ST_AsText(ST_Point(0, 0));
 
 -- Oracle
 SELECT SDO_UTIL.TO_WKTGEOMETRY(SDO_UTIL.FROM_GEOJSON('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}')) FROM dual;
 SELECT SDO_UTIL.TO_WKTGEOMETRY(SDO_UTIL.FROM_GEOJSON('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}')) FROM dual;
+SELECT SDO_UTIL.TO_WKTGEOMETRY(SDO_GEOMETRY(2001, 4326, SDO_POINT_TYPE(0, 0, NULL), NULL, NULL)) FROM dual;
 
 -- PostGIS
 SELECT ST_AsText(ST_GeomFromGeoJSON('{"type":"MultiLineString","coordinates":[[[0,0],[1,1]],[[2,2],[3,3]]]}'));
 SELECT ST_AsText(ST_GeomFromGeoJSON('{"type":"MultiPolygon","coordinates":[[[[0,0],[0,1],[1,1],[0,0]]],[[[2,2],[2,3],[3,3],[2,2]]]]}'));
+SELECT ST_AsText(ST_SetSRID(ST_MakePoint(0, 0), 4326));
 ```
 
-Expected: a valid 2-part MULTILINESTRING / 2-part MULTIPOLYGON in every case. BigQuery is verified end-to-end (routing `LineString`/`MultiLineString` up to a 2,862 km multi-leg route, isoline `Polygon`/`MultiPolygon`).
+Point via the GeoJSON constructor is covered by the same functions — e.g. `SELECT ST_GEOGFROMGEOJSON('{"type":"Point","coordinates":[0,0]}');` on BigQuery.
+
+Expected: a valid 2-part MULTILINESTRING / 2-part MULTIPOLYGON / POINT in every case. BigQuery is verified end-to-end (routing `LineString`/`MultiLineString` up to a 2,862 km multi-leg route, isoline `Polygon`/`MultiPolygon`).
 
 ## Sources (official docs, checked Jul 2026)
 

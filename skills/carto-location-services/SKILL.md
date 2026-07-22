@@ -1,6 +1,6 @@
 ---
 name: carto-location-services
-description: Call CARTO Location Data Services — geocoding, reverse geocoding, isolines (catchment areas), routing, and origin-destination matrices — synchronously and inline via the CARTO MCP server's LDS tools, for a handful of inputs needed right now in the conversation. Triggers on "geocode these few addresses", "what's the address at these coordinates", "15-minute drive-time area around this point", "route / travel time from A to B", "small drive-time matrix between these sites". Provider is account-configured, never chosen by the agent. Distinct from carto-geocoding and carto-routing-od-analysis, which build CARTO Workflows for whole tables — use those, not this, for a column of addresses or a large batch.
+description: Call CARTO Location Data Services — geocoding, reverse geocoding, isolines (catchment areas), routing, and origin-destination matrices — synchronously and inline via the CARTO MCP server's LDS tools, for a handful of inputs needed right now in the conversation. Triggers on "geocode these few addresses", "show me where this address is", "locate this address on a map", "put this location / these few points on a map", "what's the address at these coordinates", "15-minute drive-time area around this point", "route / travel time from A to B", "small drive-time matrix between these sites". Provider is account-configured, never chosen by the agent. Distinct from carto-geocoding and carto-routing-od-analysis, which build CARTO Workflows for whole tables — use those, not this, for a column of addresses or a large batch.
 license: MIT
 ---
 
@@ -39,21 +39,31 @@ Unlike the map tools, these return JSON text (not a rendered widget), so there's
 
 ## Putting a result on a map (optional)
 
-`lds_isolines` / `lds_routing` return GeoJSON geometry. The map tool (`carto-render-inline-map`'s `view_map`) renders **tile-only CARTO sources**, not inline GeoJSON — so for a **small** geometry, wrap it in a `vectorQuerySource` whose SQL builds the geometry from the GeoJSON, against one of the user's connections.
+`view_map` (from `carto-render-inline-map`) has no inline-GeoJSON layer — it renders CARTO sources. So **any** small LDS result — a geocoded point, a route line, an isoline polygon — goes on the map the same way: wrap it in a `vectorQuerySource` whose SQL constructs the geometry, against one of the user's connections.
 
-- **Extract the bare geometry first.** Routing returns it directly — `data.value.route` is a bare geometry object. Isolines return a `FeatureCollection` with **one feature per requested range**: take `features[i].geometry` for the range(s) you're rendering. Never pass a `Feature`/`FeatureCollection` to the SQL constructor — BigQuery and PostGIS reject them outright.
+**Honest tradeoff for a plain point.** For a single address lookup where a simple pin is enough and no CARTO connection is involved, a generic map display is lighter — no SQL, no warehouse round-trip. Use LDS + `view_map` when you specifically want the **account's configured geocoder**, or when the point will sit **alongside other CARTO layers** (an isoline, a warehouse-backed layer) on the same map.
+
+- **Extract the coordinates/geometry first.**
+  - **Geocode:** no GeoJSON in the response — plain numeric fields, keyed by address index: `data["0"].value` is the candidate list for the first address; take `value[0].longitude` / `value[0].latitude` for the top match.
+  - **Routing:** `data.value.route` is a bare GeoJSON geometry — pass it straight through.
+  - **Isolines:** a `FeatureCollection` with **one feature per requested range** — take `features[i].geometry`. Never pass a `Feature`/`FeatureCollection` to a SQL constructor — BigQuery and PostGIS reject them outright.
 - **The geometry `type` is not fixed.** Routes may be `LineString` or `MultiLineString`; isolines `Polygon` or `MultiPolygon` — it changes with waypoints/fragmentation and with the account's provider. Every warehouse's GeoJSON constructor accepts all of these, so pass the geometry straight through; never assume the singular form or read `coordinates` as a single line/ring.
-- **Use the connection's dialect constructor** (pick by the connection's provider from `list_connections`): BigQuery `ST_GEOGFROMGEOJSON`, Snowflake `TO_GEOGRAPHY` (via `PARSE_JSON`), Databricks `st_geogfromgeojson` (needs DBR 17.1+ / SQL Pro or Serverless — not SQL Classic), Redshift `ST_GeomFromGeoJSON` (returns planar GEOMETRY), Oracle `SDO_UTIL.FROM_GEOJSON`, PostGIS `ST_GeomFromGeoJSON`. The same function handles routing and isoline geometry alike. Full per-dialect caveats and verification queries: [`references/rendering-geometry.md`](references/rendering-geometry.md).
+- **Use the connection's dialect constructor** (pick by the connection's provider from `list_connections`). Lines/polygons — the GeoJSON constructor: BigQuery `ST_GEOGFROMGEOJSON`, Snowflake `TO_GEOGRAPHY` (via `PARSE_JSON`), Databricks `st_geogfromgeojson` (needs DBR 17.1+ / SQL Pro or Serverless — not SQL Classic), Redshift `ST_GeomFromGeoJSON` (returns planar GEOMETRY), Oracle `SDO_UTIL.FROM_GEOJSON`, PostGIS `ST_GeomFromGeoJSON`. Geocoded **points** — the native point constructor is simplest: BigQuery `ST_GEOGPOINT(lon, lat)`, Snowflake `ST_MAKEPOINT(lon, lat)`, Databricks `st_point(lon, lat)`, Redshift `ST_Point(lon, lat)`, Oracle `SDO_GEOMETRY(2001, 4326, SDO_POINT_TYPE(lon, lat, NULL), NULL, NULL)`, PostGIS `ST_SetSRID(ST_MakePoint(lon, lat), 4326)` — or assemble a `{"type":"Point","coordinates":[lon,lat]}` literal for the same GeoJSON constructor as lines/polygons. **Watch the order:** geocode results name the fields `latitude`/`longitude`, but every constructor takes **lon first**. Full per-dialect caveats and verification queries: [`references/rendering-geometry.md`](references/rendering-geometry.md).
 
-Sketch:
+Worked example — "show me where 350 Fifth Ave is":
+
+1. `lds_geocode` with `addresses: ["350 Fifth Ave, New York"]` → `data["0"].value[0]` → `longitude: -73.985, latitude: 40.7482`.
+2. Render (BigQuery connection shown — swap the constructor per dialect):
 
 ```
 view_map({ deckglProps: { layers: [{
   "@@type": "VectorTileLayer",
   "data": { "@@function": "vectorQuerySource",
             "connectionName": "<a CARTO connection>",
-            "sqlQuery": "SELECT <dialect GeoJSON constructor>('<bare geometry JSON>') AS geom" } }] } })
+            "sqlQuery": "SELECT ST_GEOGPOINT(-73.985, 40.7482) AS geom" } }] } })
 ```
+
+For a route/isoline, same shape with the GeoJSON constructor: `"sqlQuery": "SELECT <dialect GeoJSON constructor>('<bare geometry JSON>') AS geom"`.
 
 This needs a CARTO connection and only works for geometry small enough to embed. Confirm with the user before rendering. For large geometry, go through the Workflows path (write results to a table, then map the table).
 
