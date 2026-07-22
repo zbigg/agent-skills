@@ -39,7 +39,7 @@ Unlike the map tools, these return JSON text (not a rendered widget), so there's
 
 ## Putting a result on a map (optional)
 
-`view_map` (from `carto-render-inline-map`) has no inline-GeoJSON layer — it renders CARTO sources. So **any** small LDS result — a geocoded point, a route line, an isoline polygon — goes on the map the same way: wrap it in a `vectorQuerySource` whose SQL constructs the geometry, against one of the user's connections.
+`view_map` (from `carto-render-inline-map`) has no inline-GeoJSON layer — it renders CARTO sources only. **Counterintuitive but critical:** LDS hands you GeoJSON, yet feeding it to a generic deck.gl `GeoJsonLayer` does NOT work — `view_map` registers only CARTO tile layers, and an unregistered layer renders an **empty map with no error**. The GeoJSON's only path to the map is through SQL: **any** small LDS result — a geocoded point, a route line, an isoline polygon — is wrapped in a `vectorQuerySource` whose SQL constructs the geometry, against one of the user's connections, rendered by a `VectorTileLayer`.
 
 **Honest tradeoff for a plain point.** For a single address lookup where a simple pin is enough and no CARTO connection is involved, a generic map display is lighter — no SQL, no warehouse round-trip. Use LDS + `view_map` when you specifically want the **account's configured geocoder**, or when the point will sit **alongside other CARTO layers** (an isoline, a warehouse-backed layer) on the same map.
 
@@ -81,3 +81,5 @@ This needs a CARTO connection and only works for geometry small enough to embed.
 - **Acting on a truncated result, or trying to map a huge isoline/route inline.** If it's truncated or large, move to Workflows.
 - **Retrying `lds_od_matrix` on a non-TravelTime account.** Check `lds_capabilities`; if unsupported, use the Workflows OD-matrix path.
 - **Passing a `Feature`/`FeatureCollection` (or the whole isolines response) into a SQL geometry constructor.** Extract the bare geometry first: `data.value.route` for routes, `features[i].geometry` for isolines.
+- **Rendering LDS GeoJSON with a generic deck.gl layer (`GeoJsonLayer` etc.) in `view_map`.** Not registered — the map renders empty with no error. The geometry goes into `vectorQuerySource` SQL (see "Putting a result on a map").
+- **Switching rendering technology when a `view_map` render comes back empty.** An empty map is almost always a layer↔source mismatch (a generic `GeoJsonLayer` instead of `VectorTileLayer` + `vectorQuerySource`) or a missing dialect constructor — NOT a reason to fall back to SVG/HTML or any non-CARTO renderer. Re-read "Putting a result on a map" and fix the layer/source, don't change the transport.
