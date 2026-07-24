@@ -46,7 +46,7 @@ For name-based lookup, use `mine_only: true` if the user said "my map". Default 
 ## Set expectations on the preview (always)
 
 The preview is **lightweight**:
-- ✓ Layers, basemap, viewport, popups, legend — exactly as configured in Builder.
+- ✓ Layers, basemap, viewport, popups, legend — exactly as configured in Builder, including stroke styles (dashed / dotted lines and polygon borders).
 - ✗ Widgets, SQL parameters, map description, AI agent configuration, and other Builder-only features are NOT included.
 
 After loading, tell the user: *"Loaded [name] as a lightweight preview. Widgets, SQL parameters, and the map description aren't included — click 'Open in Builder' in the rendered widget for the full experience."* Set this expectation BEFORE the user asks why the preview looks different from the live Builder map.

@@ -113,16 +113,20 @@ Given the layer type is fixed, here's what you can style. **Each geometry has in
 
 - `thickness` or `sizeField` + `sizeRange`
 - `strokeColor` / `colorField` — the line color *is* the stroke
+- `lineStyle` (`solid` | `dashed` | `dotted`) + `dashArray` `[dash, gap]` — stroke dash pattern, relative to stroke width (see `layers.md`)
 - `opacity` — 0.7–1.0; lines need more opacity than polygons
 
 **Default:** `stroked: true, filled: false, thickness: 2`.
 
 **Width encodes magnitude.** Use `sizeField` + `sizeRange` for numeric line measures. Color encodes category or magnitude.
 
+**Dash encodes status, not magnitude.** `dashed` / `dotted` read as provisional, planned, or secondary — use them for draft/proposed routes, boundaries under revision, or to push a reference network behind the main subject. Don't dash the primary data layer of a single-layer map, and don't dash dense networks — at low zoom the dashes fuse into noise. Default stays `solid`.
+
 ### 1.3 `tileset` — polygons
 
 - `filled: true` + `colorField` → choropleth
 - `stroked: true` + `strokeColor` + `strokeColorField` + `thickness` → borders (keep thin: 0.5–1 px)
+- `lineStyle` + `dashArray` → dashed/dotted borders — status contrast only (provisional / disputed / draft boundaries); keep solid on dense choropleths
 - `enable3d: true` + `heightField` + `heightRange` + `elevationScale` → extrusion
 - `wireframe: true` — wireframe 3D (only with `enable3d: true`)
 - `opacity` — typical range `0.4–0.8`; lower when the basemap carries orientation context or you want the layer to recede in the design (see §1.4)

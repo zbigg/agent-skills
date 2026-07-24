@@ -119,6 +119,7 @@ Set on `layer.config.visibilityByZoom: { min, max }` (NOT inside `visConfig`) to
 - **`thickness`** is the fixed line width (px) when `sizeField` is null; defaults to 1.
 - **`sizeField`** + **`sizeRange` [min, max]** + **`sizeAggregation`** drive width-by-value. Numeric fields only.
 - **`strokeColorField`** + **`strokeColorRange`** + **`strokeColorAggregation`** drive the line colour.
+- **`lineStyle`** (`"solid"` default | `"dashed"` | `"dotted"`) + **`dashArray` [dash, gap]** set the stroke dash pattern. Units are relative to stroke width, not px — dash `2` at `thickness: 4` renders 8 px dashes, and the pattern auto-scales with width-by-value. `dashed` → `[dash, gap]` (a good starting rhythm is `[4, 4]`); `dotted` → `[0, gap]` (the renderer rounds the caps into circular dots). Omit both for solid. See `cartography.md` §1.2 for when a dash is the right call.
 - **`radius`, `radiusField`, `rotation`, `customMarkers` are ignored** for lines.
 - **3D extrusion is NOT supported on line tilesets.** `enable3d`, `heightField`, `heightRange`, `elevationScale`, `wireframe` are ignored by the renderer — lines have no extrudable surface. 3D works only on polygon tilesets, h3, and quadbin.
 
@@ -156,6 +157,7 @@ Set on `layer.config.visibilityByZoom: { min, max }` (NOT inside `visConfig`) to
 - **`colorField` / `colorRange` / `colorAggregation`** drive fill colour — the main visual.
 - **`strokeColorField` / `strokeColorAggregation`** drive outline colour, *if* you opt into a stroke. For dense choropleths, derive the stroke from the fill (same column, same break points, darker palette) instead of using the default contrasting outline — see `cartography.md` §1.3 for the recipe and §7.13 for the failure mode it avoids.
 - **`thickness`** is outline width (px) — only relevant when `stroked: true`. Keep thin (0.5 – 2) to let the fill read.
+- **`lineStyle` + `dashArray`** apply to polygon outlines too (same fields and units as line tilesets, above) — a dashed/dotted border reads as provisional, planned, or disputed. Keep the default solid on dense choropleths; dashes on many small polygons turn into noise.
 - **No `radius`, `rotation`, `customMarkers`, `sizeField`** for polygons (size doesn't map to anything useful — use `thickness` for outline width when stroked).
 
 ```jsonc

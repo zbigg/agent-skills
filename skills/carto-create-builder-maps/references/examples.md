@@ -421,7 +421,7 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
               "dataId": "$ref:districts", "label": "Districts",
               "color": [180, 180, 180], "isVisible": true, "hidden": false, "columns": {},
               "textLabel": [{"size":12,"color":[44,48,50],"field":{"name":"name","type":"string"},"anchor":"middle","offset":[0,0],"alignment":"center","outlineColor":[255,255,255]}],
-              "visConfig": {"filled": false, "stroked": true, "opacity": 0.7, "thickness": 1}
+              "visConfig": {"filled": false, "stroked": true, "opacity": 0.7, "thickness": 1, "lineStyle": "dashed", "dashArray": [4, 4]}
             },
             "visualChannels": {"colorField":null,"colorScale":"quantize","sizeField":null,"sizeScale":"linear","radiusField":null,"radiusScale":"linear"}
           },
@@ -456,6 +456,7 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
 
 **What this demonstrates:**
 - `layerGrouping` is a **flat, ordered array** at the config root — *not* nested in `visState`, and *not* a field on any layer. Panel order is top-to-bottom: the ungrouped "Stores" layer first, then the folded "Reference" group.
+- The district boundaries use `"lineStyle": "dashed"` + `"dashArray": [4, 4]` — a dashed stroke pushes the reference outlines behind the subject layer (see `cartography.md` §1.2 for when to dash).
 - Layers join the group by appearing in its **`children`** — there's no `groupId` on `L_districts` / `L_roads`.
 - Each `layerId` matches a `visState.layers[].id` (the layer `id`, not the `$ref` dataId). A dangling id would be flagged by the validator and pruned by Builder.
 - `isCollapsed: true` ships the group folded in the panel; `isVisible: true` keeps both reference layers rendering (group visibility ANDs with each layer's own `isVisible`).
