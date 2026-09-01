@@ -142,9 +142,7 @@ A contrasting stroke is correct when polygons are large and few (countries on a 
 
 **Pattern encodes category or exception, not magnitude.** A texture has no natural order, so never use one for a continuous variable — that is the colour ramp's job. Patterns earn their place in two situations: separating nominal categories so they stay distinguishable in greyscale, in print, and for colour-blind readers; and marking ground that carries a condition, which is the long-standing planning convention (hatching for restricted, protected, provisional, or missing-data areas). A hatched polygon reads as *"something applies here"*, which is why it pulls the eye — use that deliberately.
 
-**One patterned layer per map.** Two patterned layers overlapping in the same place produce interference, not information: the textures cross-hatch each other and neither reads. If a second thematic layer must sit on top of a patterned one, give it a solid fill, an outline, or a dashed edge instead.
-
-**Patterns need room.** They resolve on large polygons (admin areas, zones, districts). On dense small geometry — parcels, postcodes, h3 cells at low zoom — the texture degrades into noise and the fill colour stops reading. Prefer a flat choropleth there.
+**Patterns need room.** A texture only resolves if the polygon is large enough on screen to show a few repeats. Where the geometry is too small at the zoom the layer is read at, the pattern degrades into noise and the fill colour stops reading; a flat choropleth is the better call there. Judge it by rendered size, not by the kind of geometry.
 
 ### 1.4 `h3` — hex cell aggregation
 
