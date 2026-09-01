@@ -127,6 +127,7 @@ Given the layer type is fixed, here's what you can style. **Each geometry has in
 - `filled: true` + `colorField` → choropleth
 - `stroked: true` + `strokeColor` + `strokeColorField` + `thickness` → borders (keep thin: 0.5–1 px)
 - `lineStyle` + `dashArray` → dashed/dotted borders — status contrast only (provisional / disputed / draft boundaries); keep solid on dense choropleths
+- `fillPatternEnabled` + `fillPattern` → hatched / textured fills; tinted by the fill colour, gaps transparent
 - `enable3d: true` + `heightField` + `heightRange` + `elevationScale` → extrusion
 - `wireframe: true` — wireframe 3D (only with `enable3d: true`)
 - `opacity` — typical range `0.4–0.8`; lower when the basemap carries orientation context or you want the layer to recede in the design (see §1.4)
@@ -138,6 +139,12 @@ Given the layer type is fixed, here's what you can style. **Each geometry has in
 **Stroke on dense choropleths — derive from the fill.** When a choropleth has many small polygons (sub-national admin, postcodes, parcels, h3 / quadbin cells), the default contrasting stroke makes boundaries more prominent than the data. **Bind `strokeColorField` to the same column as `colorField`, on a darker variant of the fill palette with the same break points.** Multiply each fill RGB by ~0.7. Use `thickness: 0.6–0.8`, `strokeOpacity: 0.85–0.95`. See §7.13 for the failure mode.
 
 A contrasting stroke is correct when polygons are large and few (countries on a world map) — each is a distinct entity, not one cell in a distribution.
+
+**Pattern encodes category or exception, not magnitude.** A texture has no natural order, so never use one for a continuous variable — that is the colour ramp's job. Patterns earn their place in two situations: separating nominal categories so they stay distinguishable in greyscale, in print, and for colour-blind readers; and marking ground that carries a condition, which is the long-standing planning convention (hatching for restricted, protected, provisional, or missing-data areas). A hatched polygon reads as *"something applies here"*, which is why it pulls the eye — use that deliberately.
+
+**One patterned layer per map.** Two patterned layers overlapping in the same place produce interference, not information: the textures cross-hatch each other and neither reads. If a second thematic layer must sit on top of a patterned one, give it a solid fill, an outline, or a dashed edge instead.
+
+**Patterns need room.** They resolve on large polygons (admin areas, zones, districts). On dense small geometry — parcels, postcodes, h3 cells at low zoom — the texture degrades into noise and the fill colour stops reading. Prefer a flat choropleth there.
 
 ### 1.4 `h3` — hex cell aggregation
 

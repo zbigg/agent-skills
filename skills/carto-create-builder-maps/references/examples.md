@@ -456,6 +456,48 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
 
 **What this demonstrates:**
 - `layerGrouping` is a **flat, ordered array** at the config root — *not* nested in `visState`, and *not* a field on any layer. Panel order is top-to-bottom: the ungrouped "Stores" layer first, then the folded "Reference" group.
+### By-column fill pattern — a zoning / status layer
+
+Patterns bound to a category column. Note all three parts: the range in `visConfig`, and **both** the field and the scale in `visualChannels` — omit the field and every polygon silently renders the single `fillPattern` instead.
+
+```jsonc
+{
+  "id": "L_zoning", "type": "tileset",
+  "config": {
+    "dataId": "$ref:zoning", "label": "Zoning by status",
+    "color": [193, 65, 75], "isVisible": true,
+    "visibilityByZoom": { "min": 9, "max": 14 },     // patterns coarsen as you zoom in
+    "visConfig": {
+      "filled": true, "stroked": true, "opacity": 0.55, "thickness": 0.8,
+      "strokeColor": [108, 124, 140],
+      "colorRange": { "name": "Status", "type": "qualitative", "category": "Custom",
+        "colors": ["#C3D2E0", "#C1414B", "#E8A33D"] },
+      "fillPatternEnabled": true,
+      "fillPatternDensity": "medium",
+      "fillPatternSize": 0.85,
+      "fillPatternRange": {
+        "patternMap": [
+          { "value": "Adopted",     "pattern": "solid" },        // flat fill colour
+          { "value": "Restricted",  "pattern": "cross-hatch" },  // convention: a rule applies here
+          { "value": "Under review","pattern": "diag-right" }
+        ],
+        "othersPattern": "none"                                   // paints nothing
+      }
+    }
+  },
+  "visualChannels": {
+    "colorField": { "name": "status", "type": "string" },
+    "colorScale": "ordinal",
+    "colorDomain": ["Adopted", "Restricted", "Under review"],
+    "fillPatternField": { "name": "status", "type": "string" },
+    "fillPatternScale": "ordinal"
+  }
+}
+```
+
+- `colorDomain` is pinned because the CLI hydrates it from `/stats` **by frequency**, not by the order of your `colors` array — leave it out and the palette lands on the wrong categories.
+- Colour and pattern read the same column here, so Builder merges them into one legend entry rather than listing `status` twice.
+
 - The district boundaries use `"lineStyle": "dashed"` + `"dashArray": [4, 4]` — a dashed stroke pushes the reference outlines behind the subject layer (see `cartography.md` §1.2 for when to dash).
 - Layers join the group by appearing in its **`children`** — there's no `groupId` on `L_districts` / `L_roads`.
 - Each `layerId` matches a `visState.layers[].id` (the layer `id`, not the `$ref` dataId). A dangling id would be flagged by the validator and pruned by Builder.
