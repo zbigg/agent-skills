@@ -10,6 +10,7 @@
 - [§D — Widgets gallery — one of each kind](#d-widgets-gallery--one-of-each-kind)
 - [§E — Split-map mode (side-by-side comparison)](#e-split-map-mode-side-by-side-comparison)
 - [§F — Layer groups (collapsible folders)](#f-layer-groups-collapsible-folders)
+- [§G — Stroke styles and fill patterns](#g-stroke-styles-and-fill-patterns)
 
 ---
 
@@ -456,7 +457,44 @@ Three layers, two folded into a **"Reference"** group and one left ungrouped at 
 
 **What this demonstrates:**
 - `layerGrouping` is a **flat, ordered array** at the config root — *not* nested in `visState`, and *not* a field on any layer. Panel order is top-to-bottom: the ungrouped "Stores" layer first, then the folded "Reference" group.
-### By-column fill pattern — a zoning / status layer
+- The district boundaries use `"lineStyle": "dashed"` + `"dashArray": [4, 4]` — a dashed stroke pushes the reference outlines behind the subject layer (see `cartography.md` §1.2 for when to dash).
+- Layers join the group by appearing in its **`children`** — there's no `groupId` on `L_districts` / `L_roads`.
+- Each `layerId` matches a `visState.layers[].id` (the layer `id`, not the `$ref` dataId). A dangling id would be flagged by the validator and pruned by Builder.
+- `isCollapsed: true` ships the group folded in the panel; `isVisible: true` keeps both reference layers rendering (group visibility ANDs with each layer's own `isVisible`).
+- The "Stores" layer is omitted from any group on purpose — listing it as a top-level `{type:"layer"}` entry just fixes its panel order. Dropping it from the array entirely would still work: Builder appends ungrouped layers on load.
+- **Labels work on vector tileset layers of any geometry.** The polygon "Districts" and line "Major roads" layers both carry an active `textLabel` (`field` set to `name`); the renderer auto-places them at the polygon centroid and line midpoint — no centroid column needed. The **line** layer also sets `visConfig.textLabelUniqueIdField: "name"` so a road spanning multiple tiles gets **one** label instead of one per tile — this control is line-only. Leave `field: null` to keep a layer's labels off. Labels aren't available on h3/quadbin/heatmap or raster layers. See `references/cartography.md` §6.3.
+
+---
+
+## G. Stroke styles and fill patterns
+
+Two layers from the same map: a line layer whose dash encodes status, and a polygon layer whose texture encodes category. Both are `tileset` layers; the styling lives in `visConfig`, and the by-column bindings in `visualChannels`.
+
+### Stroke style — status on a line network
+
+A fixed dash. `dashed` takes `[dash, gap]`; `dotted` takes `[0, gap]` and the renderer rounds the caps into dots. Units are relative to stroke weight, so the rhythm holds when the line gets thicker.
+
+```jsonc
+{
+  "id": "L_planned", "type": "tileset",
+  "config": {
+    "dataId": "$ref:routes", "label": "Planned extensions", "isVisible": true,
+    "color": [232, 163, 61],
+    "visConfig": {
+      "filled": false, "stroked": true, "opacity": 0.95, "thickness": 3,
+      "strokeColor": [232, 163, 61],
+      "lineStyle": "dashed",
+      "dashArray": [4, 3]
+    }
+  },
+  "visualChannels": {}
+}
+```
+
+- Pair it with a solid layer of the same network to get the contrast working: **solid for what exists, dashed for what is proposed**. A dash on its own says nothing.
+- `"lineStyle": "solid"` is the default; omit both fields rather than setting it explicitly.
+
+### Fill pattern by column — a zoning / status layer
 
 Patterns bound to a category column. Note all three parts: the range in `visConfig`, and **both** the field and the scale in `visualChannels` — omit the field and every polygon silently renders the single `fillPattern` instead.
 
@@ -497,10 +535,3 @@ Patterns bound to a category column. Note all three parts: the range in `visConf
 
 - `colorDomain` is pinned because the CLI hydrates it from `/stats` **by frequency**, not by the order of your `colors` array — leave it out and the palette lands on the wrong categories.
 - Colour and pattern read the same column here, so Builder merges them into one legend entry rather than listing `status` twice.
-
-- The district boundaries use `"lineStyle": "dashed"` + `"dashArray": [4, 4]` — a dashed stroke pushes the reference outlines behind the subject layer (see `cartography.md` §1.2 for when to dash).
-- Layers join the group by appearing in its **`children`** — there's no `groupId` on `L_districts` / `L_roads`.
-- Each `layerId` matches a `visState.layers[].id` (the layer `id`, not the `$ref` dataId). A dangling id would be flagged by the validator and pruned by Builder.
-- `isCollapsed: true` ships the group folded in the panel; `isVisible: true` keeps both reference layers rendering (group visibility ANDs with each layer's own `isVisible`).
-- The "Stores" layer is omitted from any group on purpose — listing it as a top-level `{type:"layer"}` entry just fixes its panel order. Dropping it from the array entirely would still work: Builder appends ungrouped layers on load.
-- **Labels work on vector tileset layers of any geometry.** The polygon "Districts" and line "Major roads" layers both carry an active `textLabel` (`field` set to `name`); the renderer auto-places them at the polygon centroid and line midpoint — no centroid column needed. The **line** layer also sets `visConfig.textLabelUniqueIdField: "name"` so a road spanning multiple tiles gets **one** label instead of one per tile — this control is line-only. Leave `field: null` to keep a layer's labels off. Labels aren't available on h3/quadbin/heatmap or raster layers. See `references/cartography.md` §6.3.
