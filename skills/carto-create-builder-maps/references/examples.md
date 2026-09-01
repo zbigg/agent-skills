@@ -494,6 +494,34 @@ A fixed dash. `dashed` takes `[dash, gap]`; `dotted` takes `[0, gap]` and the re
 - Pair it with a solid layer of the same network to get the contrast working: **solid for what exists, dashed for what is proposed**. A dash on its own says nothing.
 - `"lineStyle": "solid"` is the default; omit both fields rather than setting it explicitly.
 
+### Fill pattern, fixed — one texture for the whole layer
+
+The common case: hatch a layer to mark it as a zone rather than a measurement. No visual channel involved, so `fillPatternEnabled` plus the pattern fields are the whole of it.
+
+```jsonc
+{
+  "id": "L_zone", "type": "tileset",
+  "config": {
+    "dataId": "$ref:zone", "label": "Congestion charge zone", "isVisible": true,
+    "color": [255, 87, 20],
+    "visConfig": {
+      "filled": true, "stroked": true, "opacity": 0.9, "thickness": 2.5,
+      "strokeColor": [255, 138, 76],
+      "fillPatternEnabled": true,
+      "fillPattern": "cross-hatch",
+      "fillPatternDensity": "medium",
+      "fillPatternSize": 0.8,
+      "lineStyle": "dashed", "dashArray": [3, 2]
+    }
+  },
+  "visualChannels": {}
+}
+```
+
+- **`filled: true` is required.** With `filled: false` the pattern has no surface to paint and the layer renders as an outline only.
+- The pattern takes the layer's fill colour (`color`), and the gaps are transparent, so the layers below show through.
+- Hatch plus a dashed edge is the standard "a rule applies to this ground" pairing.
+
 ### Fill pattern by column — a zoning / status layer
 
 Patterns bound to a category column. Note all three parts: the range in `visConfig`, and **both** the field and the scale in `visualChannels` — omit the field and every polygon silently renders the single `fillPattern` instead.
