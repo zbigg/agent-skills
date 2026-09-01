@@ -602,6 +602,8 @@ No standalone `### Source` section — connection / table identifiers are author
 
 **No tables, but images are fine.** The renderer supports headings, paragraphs, lists, and embedded images — but not table syntax. For data callouts (top-N, before/after, comparisons) embed a small image instead of bullet-padding in lieu of a table.
 
+**Anti-pattern — a hand-written legend in the description.** The map already has one, it updates itself, and it carries the actual swatches. A `### Reading the map` list restating *red means X, dashed means Y* duplicates it, goes stale the moment styling changes, and burns the right rail on something the viewer can already see. Write why the encoding was chosen, not what each symbol maps to: *"hatching marks ground where a rule applies, which is why those areas pull the eye"* earns its space; *"red cross hatch = bus only"* does not.
+
 **Anti-pattern — boilerplate that doesn't add narrative.** *"This map shows three layers, displayed at different zoom levels"* tells the viewer nothing. Restating channel→field mappings is fine when you're adding context (palette rationale, units, exaggeration factor); it's noise when you're just naming the legend swatches.
 
 **Worked example — Manhattan PLUTO on Google Photorealistic 3D Tiles:**
